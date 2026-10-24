@@ -73,7 +73,7 @@ public class ReservaServiceTest {
 
     @Test
     void cancelarReservaActiva() {
-        Reserva reserva = nuevaReserva("Reunion", "2027-02-10", "09:00", "10:00");
+        Reserva reserva = nuevaReserva("Reunion", LocalDate.now().plusDays(7).toString(), "09:00", "10:00");
         reservaService.create(reserva);
 
         String error = reservaService.cancelar(reserva);
@@ -84,7 +84,7 @@ public class ReservaServiceTest {
 
     @Test
     void cancelarReservaYaCandelada() {
-        Reserva reserva = nuevaReserva("Reunion", "2027-02-10", "09:00", "10:00");
+        Reserva reserva = nuevaReserva("Reunion", LocalDate.now().plusDays(7).toString(), "09:00", "10:00");
         reservaService.create(reserva);
 
         reservaService.cancelar(reserva);
