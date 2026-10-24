@@ -17,6 +17,8 @@ import una.eif206.service.UsuarioService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
@@ -75,8 +77,9 @@ public class ServiceIntegrationIT {
     @Test
     void testFlujoCompletoReserva() {
         Funcionario funcionario = funcionarioService.findById("111");
+        String fecha = LocalDate.now().plusDays(7).toString();
         Reserva reserva = new Reserva(reservaService.generarId(), "Reunion de equipo",
-                "2026-01-15", "10:00", "11:00", funcionario);
+                fecha, "10:00", "11:00", funcionario);
         reserva.setRecursos(List.of(recursoService.findAll().get(0)));
 
         reservaService.create(reserva);
@@ -102,18 +105,19 @@ public class ServiceIntegrationIT {
         CategoriaRecurso categoria = categoriaService.findAll().stream()
                 .filter(c -> c.getId().equals("CAT-000002")).findFirst().orElseThrow();
         Recurso recurso = recursoService.findByCategoria(categoria).get(0);
+        String fecha = LocalDate.now().plusDays(7).toString();
 
-        Reserva primera = new Reserva(reservaService.generarId(), "Reunion 1", "2026-04-01",
+        Reserva primera = new Reserva(reservaService.generarId(), "Reunion 1", fecha,
                 "09:00", "11:00", funcionario);
         primera.setRecursos(List.of(recurso));
         reservaService.create(primera);
 
-        Reserva solapada = new Reserva(reservaService.generarId(), "Reunion 2", "2026-04-01",
+        Reserva solapada = new Reserva(reservaService.generarId(), "Reunion 2", fecha,
                 "10:00", "12:00", funcionario);
         solapada.setRecursos(List.of(recurso));
         assertNotNull(reservaService.create(solapada));
 
-        Reserva sinSolape = new Reserva(reservaService.generarId(), "Reunion 3", "2026-04-01",
+        Reserva sinSolape = new Reserva(reservaService.generarId(), "Reunion 3", fecha,
                 "11:00", "13:00", funcionario);
         sinSolape.setRecursos(List.of(recurso));
         reservaService.create(sinSolape);
@@ -142,11 +146,11 @@ public class ServiceIntegrationIT {
         reservaService.create(r3);
 
         Map<String, Integer> estadisticasRecursos = estadisticasService.getEstadisticasRecursos("2026-05-01", "2026-05-03");
-        assertEquals(2, estadisticasRecursos.getOrDefault(recurso.getDescripcion(), 0));
+        assertEquals(3, estadisticasRecursos.getOrDefault(categoria.getDescripcion(), 0));
 
         Map<String, Integer> estadisticasActividades = estadisticasService.getEstadisticasActividades("2026-05-01", "2026-05-03");
-        assertEquals(2, estadisticasActividades.getOrDefault("Capacitacion", 0));
-        assertEquals(1, estadisticasActividades.getOrDefault("Revision de proyecto", 0));
+        String lunes = LocalDate.parse("2026-05-01").with(DayOfWeek.MONDAY).toString();
+        assertEquals(3, estadisticasActividades.getOrDefault(lunes, 0));
     }
 
     @Test
