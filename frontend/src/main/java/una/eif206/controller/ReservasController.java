@@ -42,7 +42,7 @@ public class ReservasController {
     }
 
     public void create(String actividad, String fecha, String horaInicio,
-                        String horaFin, List<CategoriaRecurso> categoriasSeleccionadas) {
+                       String horaFin, List<CategoriaRecurso> categoriasSeleccionadas) {
         try {
             if (!(Sesion.getUsuario() instanceof Funcionario)) {
                 vista.mostrarError("Solo un funcionario puede crear reservas");
@@ -50,16 +50,10 @@ public class ReservasController {
             }
             Funcionario funcionario = (Funcionario) Sesion.getUsuario();
 
-            List<Recurso> recursos = new ArrayList<>();
-            String errorDisponibilidad = service.asignarRecursosDisponibles(
-                    categoriasSeleccionadas, fecha, horaInicio, horaFin, recursos);
-            if (errorDisponibilidad != null) {
-                vista.mostrarError(errorDisponibilidad);
-                return;
+            Reserva reserva = new Reserva("", actividad, fecha, horaInicio, horaFin, funcionario);
+            for (CategoriaRecurso categoria : categoriasSeleccionadas) {
+                reserva.getRecursos().add(new Recurso("", "", categoria));
             }
-
-            Reserva reserva = new Reserva(service.generarId(), actividad, fecha, horaInicio, horaFin, funcionario);
-            reserva.setRecursos(recursos);
 
             String error = service.create(reserva);
             if (error != null) {
