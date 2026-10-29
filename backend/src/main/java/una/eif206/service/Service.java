@@ -15,8 +15,8 @@ import java.util.Map;
 
 /**
  * Implementacion de IService que delega en los services del P1, los cuales
- * ahora reciben un Repositorio (OracleRepositorio por defecto en produccion;
- * MemoriaRepositorio en pruebas) en vez de Data/XML.
+ * reciben un Repositorio (OracleRepositorio por defecto en produccion;
+ * MemoriaRepositorio en pruebas).
  */
 public class Service implements IService {
 

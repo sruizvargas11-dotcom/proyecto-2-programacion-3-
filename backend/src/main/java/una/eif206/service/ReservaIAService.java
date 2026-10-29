@@ -16,39 +16,58 @@ import java.util.stream.Collectors;
 public class ReservaIAService {
 
     private final Repositorio repositorio;
-    private ReservaExtractorService reservaExtractorService;
+    private volatile ReservaExtractorService reservaExtractorService;
 
     public ReservaIAService(Repositorio repositorio) {
         this.repositorio = repositorio;
     }
 
-    public ReservaExtraccion extraerReserva(String frase) throws Exception {
-        if (reservaExtractorService == null) {
-            try {
-                // Intenta con Groq usando tu API key
-                OpenAiChatModel model = OpenAiChatModel.builder()
-                        .baseUrl("https://api.groq.com/openai/v1")
-                        .apiKey(cargarApiKey())
-                        .modelName("openai/gpt-oss-20b")
-                        .build();
-                reservaExtractorService = AiServices.create(ReservaExtractorService.class, model);
-            } catch (Exception e) {
-                // Fallback silencioso al proxy demo gratuito
-                OpenAiChatModel model = OpenAiChatModel.builder()
-                        .baseUrl("http://langchain4j.dev/demo/openai/v1")
-                        .apiKey("demo")
-                        .modelName("gpt-4o-mini")
-                        .build();
-                reservaExtractorService = AiServices.create(ReservaExtractorService.class, model);
-            }
+    /**
+     * Se llama desde todos los Worker/hilo que comparten esta instancia de
+     * ReservaIAService: sincronizado para que dos hilos no construyan cada
+     * uno su propio ReservaExtractorService y uno termine pisando el campo
+     * del otro (la construccion en si es barata y sin efectos secundarios,
+     * pero sin este bloqueo la asignacion final de reservaExtractorService
+     * queda en una carrera de datos sin definir cual gana).
+     */
+    private ReservaExtractorService obtenerReservaExtractorService() {
+        ReservaExtractorService actual = reservaExtractorService;
+        if (actual != null) {
+            return actual;
         }
+        synchronized (this) {
+            if (reservaExtractorService == null) {
+                try {
+                    // Intenta con Groq usando tu API key
+                    OpenAiChatModel model = OpenAiChatModel.builder()
+                            .baseUrl("https://api.groq.com/openai/v1")
+                            .apiKey(cargarApiKey())
+                            .modelName("openai/gpt-oss-20b")
+                            .build();
+                    reservaExtractorService = AiServices.create(ReservaExtractorService.class, model);
+                } catch (Exception e) {
+                    // Fallback silencioso al proxy demo gratuito
+                    OpenAiChatModel model = OpenAiChatModel.builder()
+                            .baseUrl("http://langchain4j.dev/demo/openai/v1")
+                            .apiKey("demo")
+                            .modelName("gpt-4o-mini")
+                            .build();
+                    reservaExtractorService = AiServices.create(ReservaExtractorService.class, model);
+                }
+            }
+            return reservaExtractorService;
+        }
+    }
+
+    public ReservaExtraccion extraerReserva(String frase) throws Exception {
+        ReservaExtractorService servicio = obtenerReservaExtractorService();
 
         String categorias = repositorio.listarCategorias().stream()
                 .map(CategoriaRecurso::getDescripcion)
                 .collect(Collectors.joining(", "));
         String hoy = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE);
 
-        return reservaExtractorService.extraer(frase, categorias, hoy);
+        return servicio.extraer(frase, categorias, hoy);
     }
 
     private String cargarApiKey() throws Exception {

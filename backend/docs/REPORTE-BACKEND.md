@@ -5,6 +5,19 @@ Rama: `sebastian_ruiz_backend_dev`. Ámbito: exclusivamente `backend/`.
 
 Convención: todo lo que no se pudo comprobar directamente dice **"no verificado"**, nunca se supone.
 
+> **Actualización (misma fecha, trabajo posterior a esta auditoría):** varios puntos marcados abajo
+> como pendientes ya se cerraron. No se reescribió el resto del reporte (sigue siendo la foto de ese
+> momento), solo se deja esta nota para no inducir a error:
+> - **Etapa 3 completa**: `Server`/`Worker` (sockets SYNC/ASYNC), las 23 operaciones restantes de
+>   `IService` cableadas en `Worker`, y la alerta `DELIVER_MESSAGE` al crear una reserva (sección 7).
+>   `reservaCreate` ahora resuelve id + recurso-por-categoría de forma atómica en el repositorio.
+> - **Limpieza de XML completa** (sección 5 y riesgo #4 de la sección 10): se eliminaron
+>   `Data.java`, `XMLHelper.java`, `data.xml`, `PersistenciaXMLTest.java` y las 2 dependencias JAXB
+>   del `pom.xml`. `MemoriaRepositorio` ya no depende de `Data`: tiene sus propios campos en memoria.
+> - **`CalendarioServiceTest` ya existe** (19 pruebas) — la "Calendarización: Parcial" de la sección 6
+>   queda "Completa".
+> - Ver `README.md` (nuevo, en `backend/`) para cómo levantar el servidor y correr las pruebas.
+
 ---
 
 ## 1. Estructura de `backend/` (3 niveles, con paquete por clase)

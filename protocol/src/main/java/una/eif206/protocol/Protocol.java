@@ -10,12 +10,13 @@ public final class Protocol {
     private Protocol() {}
 
     public static final String HOST = "localhost";
-    public static final int PORT = 5000;
+    public static final int PORT = 7070;
 
     // Handshake / control
     public static final int SYNC = 1;
     public static final int ASYNC = 2;
     public static final int DELIVER_MESSAGE = 3;
+    public static final int LOGOUT = 4;
 
     // Status de respuesta
     public static final int ERROR_NO_ERROR = 0;
