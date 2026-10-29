@@ -1,18 +1,18 @@
 package una.eif206.controller;
 
 import una.eif206.model.Usuario;
-import una.eif206.service.UsuarioService;
+import una.eif206.protocol.IService;
 import una.eif206.view.CambiarClaveView;
 
 public class CambiarClaveController {
 
     private final CambiarClaveView vista;
-    private final UsuarioService usuarioService;
+    private final IService service;
     private final Usuario usuario;
 
-    public CambiarClaveController(CambiarClaveView vista, UsuarioService usuarioService, Usuario usuario) {
+    public CambiarClaveController(CambiarClaveView vista, IService service, Usuario usuario) {
         this.vista = vista;
-        this.usuarioService = usuarioService;
+        this.service = service;
         this.usuario = usuario;
         vista.setController(this);
     }
@@ -23,7 +23,7 @@ public class CambiarClaveController {
                 vista.mostrarError("Debe iniciar sesion primero");
                 return false;
             }
-            String error = usuarioService.cambiarClave(usuario, actual, nueva);
+            String error = service.cambiarClave(usuario, actual, nueva);
             if (error != null) {
                 vista.mostrarError(error);
                 return false;

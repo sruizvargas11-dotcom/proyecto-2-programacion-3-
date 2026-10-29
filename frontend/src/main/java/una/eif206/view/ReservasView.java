@@ -17,9 +17,11 @@ import java.awt.event.*;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -242,7 +244,9 @@ public class ReservasView {
 
     public String getFrase() { return fraseFld.getText(); }
     public void setActividad(String v) { actividadFld.setText(v); }
-    public void setFecha(LocalDate fecha) { fechaFld.setDate(java.sql.Date.valueOf(fecha)); }
+    public void setFecha(LocalDate fecha) {
+        fechaFld.setDate(Date.from(fecha.atStartOfDay(ZoneId.systemDefault()).toInstant()));
+    }
     public void setHoraInicio(String v) { horaInicioFld.setText(v); }
     public void setHoraFin(String v) { horaFinFld.setText(v); }
 
