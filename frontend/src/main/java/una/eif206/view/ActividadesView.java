@@ -3,7 +3,6 @@ package una.eif206.view;
 import com.toedter.calendar.JDateChooser;
 import una.eif206.ApplicationLogin;
 import una.eif206.controller.ActividadesController;
-import una.eif206.service.ActividadesService;
 import una.eif206.util.IconLoader;
 import una.eif206.util.PdfReporter;
 
@@ -19,7 +18,9 @@ import java.util.TreeMap;
 
 public class ActividadesView {
 
-    private static final String[] DIAS = ActividadesService.NOMBRES_DIAS;
+    private static final String[] DIAS = {
+            "LUNES", "MARTES", "MIERCOLES", "JUEVES", "VIERNES", "SABADO", "DOMINGO"
+    };
     private static final DateTimeFormatter FORMATO_HORA = DateTimeFormatter.ofPattern("H:mm");
     private static final SimpleDateFormat FORMATO_ISO = new SimpleDateFormat("yyyy-MM-dd");
 

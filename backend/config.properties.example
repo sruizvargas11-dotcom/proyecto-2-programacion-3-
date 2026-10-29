@@ -1,0 +1,14 @@
+# Copiar este archivo a "config.properties" (mismo directorio: backend/) y
+# completar los valores. config.properties NO se sube al repositorio (ver
+# .gitignore) porque puede contener la contraseña de la base de datos.
+#
+# Estas claves solo se leen de aqui si la variable de entorno equivalente
+# no esta definida (las variables de entorno siempre tienen prioridad).
+#
+# Formato de DB_URL (elegir uno, segun como este configurada la instancia):
+#   jdbc:oracle:thin:@localhost:1521:XE        (por SID, el mas comun en XE)
+#   jdbc:oracle:thin:@//localhost:1521/XE      (por service name)
+
+DB_URL=
+DB_USER=
+DB_PASSWORD=

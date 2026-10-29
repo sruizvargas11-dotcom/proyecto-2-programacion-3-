@@ -5,12 +5,10 @@ import una.eif206.model.Funcionario;
 import una.eif206.model.Recurso;
 import una.eif206.model.Reserva;
 import una.eif206.model.Usuario;
+import una.eif206.model.ReservaExtraccion;
 import una.eif206.model.enums.EstadoReserva;
 import una.eif206.model.enums.UsuarioRol;
-import una.eif206.service.CategoriaService;
-import una.eif206.service.ReservaIAService;
-import una.eif206.service.ReservaService;
-import una.eif206.util.ReservaExtraccion;
+import una.eif206.protocol.IService;
 import una.eif206.util.Sesion;
 import una.eif206.view.ReservasView;
 
@@ -21,29 +19,24 @@ import java.util.List;
 public class ReservasController {
 
     private final ReservasView vista;
-    private final ReservaService reservaService;
-    private final CategoriaService categoriaService;
-    private final ReservaIAService reservaIAService;
+    private final IService service;
     private List<Reserva> listaActual = new ArrayList<>();
     private Reserva current;
 
-    public ReservasController(ReservasView vista, ReservaService reservaService,
-                               CategoriaService categoriaService, ReservaIAService reservaIAService) {
+    public ReservasController(ReservasView vista, IService service) {
         this.vista = vista;
-        this.reservaService = reservaService;
-        this.categoriaService = categoriaService;
-        this.reservaIAService = reservaIAService;
+        this.service = service;
         vista.setController(this);
-        vista.cargarCategorias(categoriaService.findAll());
+        vista.cargarCategorias(service.findAllCategorias());
         cargarLista();
     }
 
     public void cargarLista() {
         Usuario usuario = Sesion.getUsuario();
         if (usuario.getRol() == UsuarioRol.ADMIN) {
-            listaActual = reservaService.findAll();
+            listaActual = service.findAllReservas();
         } else {
-            listaActual = reservaService.findByFuncionario((Funcionario) usuario);
+            listaActual = service.findByFuncionario((Funcionario) usuario);
         }
         vista.cargarTabla(listaActual);
     }
@@ -58,17 +51,17 @@ public class ReservasController {
             Funcionario funcionario = (Funcionario) Sesion.getUsuario();
 
             List<Recurso> recursos = new ArrayList<>();
-            String errorDisponibilidad = reservaService.asignarRecursosDisponibles(
+            String errorDisponibilidad = service.asignarRecursosDisponibles(
                     categoriasSeleccionadas, fecha, horaInicio, horaFin, recursos);
             if (errorDisponibilidad != null) {
                 vista.mostrarError(errorDisponibilidad);
                 return;
             }
 
-            Reserva reserva = new Reserva(reservaService.generarId(), actividad, fecha, horaInicio, horaFin, funcionario);
+            Reserva reserva = new Reserva(service.generarId(), actividad, fecha, horaInicio, horaFin, funcionario);
             reserva.setRecursos(recursos);
 
-            String error = reservaService.create(reserva);
+            String error = service.create(reserva);
             if (error != null) {
                 vista.mostrarError(error);
                 return;
@@ -89,7 +82,7 @@ public class ReservasController {
                 vista.mostrarError("Seleccione una reserva de la tabla.");
                 return;
             }
-            String error = reservaService.cancelar(current);
+            String error = service.cancelar(current);
             if (error != null) {
                 vista.mostrarError(error);
                 return;
@@ -123,7 +116,7 @@ public class ReservasController {
                 vista.mostrarError("Escriba una frase para extraer.");
                 return;
             }
-            ReservaExtraccion r = reservaIAService.extraerReserva(frase);
+            ReservaExtraccion r = service.extraerReserva(frase);
             if (r.getActividad() != null) vista.setActividad(r.getActividad());
             if (r.getFecha() != null) {
                 try {

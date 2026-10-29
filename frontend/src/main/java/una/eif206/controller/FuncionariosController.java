@@ -1,7 +1,7 @@
 package una.eif206.controller;
 
 import una.eif206.model.Funcionario;
-import una.eif206.service.FuncionarioService;
+import una.eif206.protocol.IService;
 import una.eif206.view.FuncionariosView;
 
 import java.util.ArrayList;
@@ -10,25 +10,25 @@ import java.util.List;
 public class FuncionariosController {
 
     private final FuncionariosView vista;
-    private final FuncionarioService funcionarioService;
+    private final IService service;
     private List<Funcionario> listaActual = new ArrayList<>();
     private Funcionario current;
 
-    public FuncionariosController(FuncionariosView vista, FuncionarioService funcionarioService) {
+    public FuncionariosController(FuncionariosView vista, IService service) {
         this.vista = vista;
-        this.funcionarioService = funcionarioService;
+        this.service = service;
         vista.setController(this);
         cargarListado();
     }
 
     private void cargarListado() {
-        listaActual = funcionarioService.findAll();
+        listaActual = service.findAllFuncionarios();
         vista.cargarTabla(listaActual);
     }
 
     public void create(Funcionario e) {
         try {
-            String error = funcionarioService.create(e);
+            String error = service.create(e);
             if (error != null) {
                 vista.mostrarError(error);
                 return;
@@ -48,7 +48,7 @@ public class FuncionariosController {
                 vista.mostrarError("Seleccione un funcionario de la tabla.");
                 return;
             }
-            String error = funcionarioService.update(f);
+            String error = service.update(f);
             if (error != null) {
                 vista.mostrarError(error);
                 return;
@@ -68,7 +68,7 @@ public class FuncionariosController {
                 vista.mostrarError("Seleccione un funcionario de la tabla.");
                 return;
             }
-            String error = funcionarioService.delete(current);
+            String error = service.delete(current);
             if (error != null) {
                 vista.mostrarError(error);
                 return;
@@ -95,7 +95,7 @@ public class FuncionariosController {
     }
 
     public void search(String texto) {
-        listaActual = funcionarioService.search(texto);
+        listaActual = service.search(texto);
         vista.cargarTabla(listaActual);
     }
 }

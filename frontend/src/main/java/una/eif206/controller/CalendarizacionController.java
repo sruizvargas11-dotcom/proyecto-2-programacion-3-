@@ -1,22 +1,19 @@
 package una.eif206.controller;
 
 import una.eif206.model.CategoriaRecurso;
-import una.eif206.service.CalendarioService;
-import una.eif206.service.CategoriaService;
+import una.eif206.protocol.IService;
 import una.eif206.view.CalendarizacionView;
 
 public class CalendarizacionController {
 
     private final CalendarizacionView vista;
-    private final CalendarioService calendarioService;
-    private final CategoriaService categoriaService;
+    private final IService service;
 
-    public CalendarizacionController(CalendarizacionView vista, CalendarioService calendarioService, CategoriaService categoriaService) {
+    public CalendarizacionController(CalendarizacionView vista, IService service) {
         this.vista = vista;
-        this.calendarioService = calendarioService;
-        this.categoriaService = categoriaService;
+        this.service = service;
         vista.setController(this);
-        vista.cargarCategorias(categoriaService.findAll());
+        vista.cargarCategorias(service.findAllCategorias());
     }
 
     public void cargar(String fecha, CategoriaRecurso categoria) {
@@ -29,8 +26,8 @@ public class CalendarizacionController {
                 vista.mostrarError("Debe seleccionar una categoria");
                 return;
             }
-            vista.mostrarMatriz(calendarioService.findByCategoria(categoria),
-                    calendarioService.getCalendario(fecha, categoria));
+            vista.mostrarMatriz(service.findByCategoria(categoria),
+                    service.getCalendario(fecha, categoria));
         } catch (Exception ex) {
             vista.mostrarError("Error inesperado: " + ex.getMessage());
         }

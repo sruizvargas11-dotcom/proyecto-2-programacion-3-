@@ -2,8 +2,7 @@ package una.eif206.controller;
 
 import una.eif206.model.CategoriaRecurso;
 import una.eif206.model.Recurso;
-import una.eif206.service.CategoriaService;
-import una.eif206.service.RecursoService;
+import una.eif206.protocol.IService;
 import una.eif206.view.RecursosView;
 
 import java.util.ArrayList;
@@ -12,28 +11,26 @@ import java.util.List;
 public class RecursosController {
 
     private final RecursosView vista;
-    private final RecursoService recursoService;
-    private final CategoriaService categoriaService;
+    private final IService service;
     private List<Recurso> listaActual = new ArrayList<>();
     private Recurso current;
 
-    public RecursosController(RecursosView vista, RecursoService recursoService, CategoriaService categoriaService) {
+    public RecursosController(RecursosView vista, IService service) {
         this.vista = vista;
-        this.recursoService = recursoService;
-        this.categoriaService = categoriaService;
+        this.service = service;
         vista.setController(this);
-        vista.cargarCategorias(categoriaService.findAll());
+        vista.cargarCategorias(service.findAllCategorias());
         cargarListado();
     }
 
     private void cargarListado() {
-        listaActual = recursoService.findAll();
+        listaActual = service.findAllRecursos();
         vista.cargarTabla(listaActual);
     }
 
     public void create(Recurso e) {
         try {
-            String error = recursoService.create(e);
+            String error = service.create(e);
             if (error != null) {
                 vista.mostrarError(error);
                 return;
@@ -53,7 +50,7 @@ public class RecursosController {
                 vista.mostrarError("Seleccione un recurso de la tabla.");
                 return;
             }
-            String error = recursoService.update(e);
+            String error = service.update(e);
             if (error != null) {
                 vista.mostrarError(error);
                 return;
@@ -73,7 +70,7 @@ public class RecursosController {
                 vista.mostrarError("Seleccione un recurso de la tabla.");
                 return;
             }
-            String error = recursoService.delete(current);
+            String error = service.delete(current);
             if (error != null) {
                 vista.mostrarError(error);
                 return;
@@ -101,9 +98,9 @@ public class RecursosController {
 
     public void filtrarPorCategoria(CategoriaRecurso categoria) {
         if (categoria == null) {
-            listaActual = recursoService.findAll();
+            listaActual = service.findAllRecursos();
         } else {
-            listaActual = recursoService.findByCategoria(categoria);
+            listaActual = service.findByCategoria(categoria);
         }
         vista.cargarTabla(listaActual);
     }
