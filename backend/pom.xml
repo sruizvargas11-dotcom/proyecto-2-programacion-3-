@@ -20,18 +20,6 @@
             <artifactId>protocol</artifactId>
         </dependency>
 
-        <!-- Temporal: XML se elimina en la Etapa 2 -->
-        <dependency>
-            <groupId>jakarta.xml.bind</groupId>
-            <artifactId>jakarta.xml.bind-api</artifactId>
-            <version>4.0.0</version>
-        </dependency>
-        <dependency>
-            <groupId>com.sun.xml.bind</groupId>
-            <artifactId>jaxb-impl</artifactId>
-            <version>4.0.0</version>
-        </dependency>
-
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j</artifactId>

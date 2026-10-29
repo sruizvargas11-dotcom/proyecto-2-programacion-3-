@@ -89,11 +89,23 @@ public interface Repositorio {
     String siguienteIdReserva();
 
     /**
-     * Inserta la reserva y su relacion con los recursos. Debe ejecutarse en
-     * una sola conexion/transaccion (commit solo si todo sale bien) y debe
-     * quedar protegida contra concurrencia dentro del proceso, de forma que
-     * dos llamadas simultaneas no reserven el mismo recurso en el mismo
-     * horario (verificar disponibilidad + insertar es atomico).
+     * Resuelve lo que {@code reserva} no trae resuelto, e inserta la reserva
+     * y su relacion con los recursos. Si {@code reserva.getId()} viene vacio,
+     * genera uno. Cada Recurso de {@code reserva.getRecursos()} con id vacio
+     * pero con categoria se trata como "un recurso libre de esa categoria
+     * para esa fecha/franja" (si uno esta ocupado, elige otro libre de la
+     * misma categoria); los que ya traen id solo se validan contra lo
+     * ocupado. Si alguna categoria se queda sin recurso libre, no inserta
+     * nada y lanza {@link GlobalException}. Al terminar con exito, deja a
+     * {@code reserva} con el id generado y los recursos reales asignados
+     * (nunca placeholders solo-categoria).
+     *
+     * <p>Debe ejecutarse en una sola conexion/transaccion (commit solo si
+     * todo sale bien) y debe quedar protegida contra concurrencia dentro del
+     * proceso: generar el id, elegir recurso por categoria, verificar
+     * disponibilidad e insertar son, juntos, atomicos, de forma que dos
+     * llamadas simultaneas pidiendo la misma categoria/horario nunca
+     * terminen con el mismo recurso.</p>
      */
     void crearReserva(Reserva reserva) throws GlobalException, NoDataException;
 

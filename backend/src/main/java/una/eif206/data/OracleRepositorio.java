@@ -14,31 +14,52 @@ import java.util.Map;
  * solo lectura envuelven GlobalException/NoDataException como
  * RepositorioException (sin chequear) porque el contrato de Repositorio
  * (y de los *Service del P1 que lo usan) no declara throws para ellos.
+ *
+ * <p>Esta clase (y por lo tanto el {@code Service} que la envuelve) se
+ * comparte entre todos los Worker/hilo de {@link una.eif206.net.Server}. Para
+ * que eso sea seguro, cada metodo crea su propio ServicioX con
+ * {@code nuevoXxx()} en vez de guardarlo en un campo: {@code Servicio.conexion}
+ * es un campo de instancia (no hay forma de hacerlo local sin tocar el
+ * contrato de P1 que varias pruebas ya ejercitan), asi que si dos hilos
+ * reusaran el MISMO ServicioX podrian pisarse la conexion JDBC el uno al
+ * otro. Con una instancia nueva por llamada, "conexion" nunca se comparte
+ * entre hilos y no hace falta sincronizar nada.</p>
  */
 public class OracleRepositorio implements Repositorio {
 
-    private final ServicioUsuario servicioUsuario;
-    private final ServicioFuncionario servicioFuncionario;
-    private final ServicioCategoria servicioCategoria;
-    private final ServicioRecurso servicioRecurso;
-    private final ServicioReserva servicioReserva;
-    private final ServicioEstadisticas servicioEstadisticas;
+    private final ConexionProvider conexionProvider;
 
     public OracleRepositorio() {
-        this(new ServicioUsuario(), new ServicioFuncionario(), new ServicioCategoria(),
-                new ServicioRecurso(), new ServicioReserva(), new ServicioEstadisticas());
+        this(null);
     }
 
-    /** Para pruebas: permite inyectar ServicioX con un ConexionProvider simulado. */
-    public OracleRepositorio(ServicioUsuario servicioUsuario, ServicioFuncionario servicioFuncionario,
-                              ServicioCategoria servicioCategoria, ServicioRecurso servicioRecurso,
-                              ServicioReserva servicioReserva, ServicioEstadisticas servicioEstadisticas) {
-        this.servicioUsuario = servicioUsuario;
-        this.servicioFuncionario = servicioFuncionario;
-        this.servicioCategoria = servicioCategoria;
-        this.servicioRecurso = servicioRecurso;
-        this.servicioReserva = servicioReserva;
-        this.servicioEstadisticas = servicioEstadisticas;
+    /** Para pruebas: permite inyectar un ConexionProvider simulado (Mockito), sin tocar Oracle. */
+    public OracleRepositorio(ConexionProvider conexionProvider) {
+        this.conexionProvider = conexionProvider;
+    }
+
+    private ServicioUsuario nuevoServicioUsuario() {
+        return conexionProvider == null ? new ServicioUsuario() : new ServicioUsuario(conexionProvider);
+    }
+
+    private ServicioFuncionario nuevoServicioFuncionario() {
+        return conexionProvider == null ? new ServicioFuncionario() : new ServicioFuncionario(conexionProvider);
+    }
+
+    private ServicioCategoria nuevoServicioCategoria() {
+        return conexionProvider == null ? new ServicioCategoria() : new ServicioCategoria(conexionProvider);
+    }
+
+    private ServicioRecurso nuevoServicioRecurso() {
+        return conexionProvider == null ? new ServicioRecurso() : new ServicioRecurso(conexionProvider);
+    }
+
+    private ServicioReserva nuevoServicioReserva() {
+        return conexionProvider == null ? new ServicioReserva() : new ServicioReserva(conexionProvider);
+    }
+
+    private ServicioEstadisticas nuevoServicioEstadisticas() {
+        return conexionProvider == null ? new ServicioEstadisticas() : new ServicioEstadisticas(conexionProvider);
     }
 
     // ===================== Usuario =====================
@@ -46,7 +67,7 @@ public class OracleRepositorio implements Repositorio {
     @Override
     public Usuario login(String id, String clave) {
         try {
-            return servicioUsuario.login(id, clave);
+            return nuevoServicioUsuario().login(id, clave);
         } catch (GlobalException | NoDataException e) {
             throw new RepositorioException(e.getMessage(), e);
         }
@@ -54,7 +75,7 @@ public class OracleRepositorio implements Repositorio {
 
     @Override
     public void cambiarClave(String id, String claveNueva) throws GlobalException, NoDataException {
-        servicioUsuario.cambiarClave(id, claveNueva);
+        nuevoServicioUsuario().cambiarClave(id, claveNueva);
     }
 
     // ===================== Funcionario =====================
@@ -62,7 +83,7 @@ public class OracleRepositorio implements Repositorio {
     @Override
     public List<Funcionario> listarFuncionarios() {
         try {
-            return servicioFuncionario.listar();
+            return nuevoServicioFuncionario().listar();
         } catch (GlobalException | NoDataException e) {
             throw new RepositorioException(e.getMessage(), e);
         }
@@ -71,7 +92,7 @@ public class OracleRepositorio implements Repositorio {
     @Override
     public Funcionario buscarFuncionarioPorId(String id) {
         try {
-            return servicioFuncionario.buscar(id);
+            return nuevoServicioFuncionario().buscar(id);
         } catch (GlobalException | NoDataException e) {
             throw new RepositorioException(e.getMessage(), e);
         }
@@ -80,7 +101,7 @@ public class OracleRepositorio implements Repositorio {
     @Override
     public List<Funcionario> buscarFuncionariosPorTexto(String texto) {
         try {
-            return servicioFuncionario.listarPorTexto(texto);
+            return nuevoServicioFuncionario().listarPorTexto(texto);
         } catch (GlobalException | NoDataException e) {
             throw new RepositorioException(e.getMessage(), e);
         }
@@ -88,17 +109,17 @@ public class OracleRepositorio implements Repositorio {
 
     @Override
     public void insertarFuncionario(Funcionario f) throws GlobalException, NoDataException {
-        servicioFuncionario.insertar(f);
+        nuevoServicioFuncionario().insertar(f);
     }
 
     @Override
     public void modificarFuncionario(Funcionario f) throws GlobalException, NoDataException {
-        servicioFuncionario.modificar(f);
+        nuevoServicioFuncionario().modificar(f);
     }
 
     @Override
     public void eliminarFuncionario(String id) throws GlobalException, NoDataException {
-        servicioFuncionario.eliminar(id);
+        nuevoServicioFuncionario().eliminar(id);
     }
 
     // ===================== Categoria =====================
@@ -106,7 +127,7 @@ public class OracleRepositorio implements Repositorio {
     @Override
     public List<CategoriaRecurso> listarCategorias() {
         try {
-            return servicioCategoria.listar();
+            return nuevoServicioCategoria().listar();
         } catch (GlobalException | NoDataException e) {
             throw new RepositorioException(e.getMessage(), e);
         }
@@ -115,7 +136,7 @@ public class OracleRepositorio implements Repositorio {
     @Override
     public CategoriaRecurso buscarCategoriaPorId(String id) {
         try {
-            return servicioCategoria.buscar(id);
+            return nuevoServicioCategoria().buscar(id);
         } catch (GlobalException | NoDataException e) {
             throw new RepositorioException(e.getMessage(), e);
         }
@@ -124,7 +145,7 @@ public class OracleRepositorio implements Repositorio {
     @Override
     public List<CategoriaRecurso> buscarCategoriasPorTexto(String texto) {
         try {
-            return servicioCategoria.listarPorTexto(texto);
+            return nuevoServicioCategoria().listarPorTexto(texto);
         } catch (GlobalException | NoDataException e) {
             throw new RepositorioException(e.getMessage(), e);
         }
@@ -132,17 +153,17 @@ public class OracleRepositorio implements Repositorio {
 
     @Override
     public String insertarCategoria(String descripcion) throws GlobalException, NoDataException {
-        return servicioCategoria.insertar(descripcion);
+        return nuevoServicioCategoria().insertar(descripcion);
     }
 
     @Override
     public void modificarCategoria(CategoriaRecurso c) throws GlobalException, NoDataException {
-        servicioCategoria.modificar(c);
+        nuevoServicioCategoria().modificar(c);
     }
 
     @Override
     public void eliminarCategoria(String id) throws GlobalException, NoDataException {
-        servicioCategoria.eliminar(id);
+        nuevoServicioCategoria().eliminar(id);
     }
 
     // ===================== Recurso =====================
@@ -150,7 +171,7 @@ public class OracleRepositorio implements Repositorio {
     @Override
     public List<Recurso> listarRecursos() {
         try {
-            return servicioRecurso.listar();
+            return nuevoServicioRecurso().listar();
         } catch (GlobalException | NoDataException e) {
             throw new RepositorioException(e.getMessage(), e);
         }
@@ -159,7 +180,7 @@ public class OracleRepositorio implements Repositorio {
     @Override
     public List<Recurso> listarRecursosPorCategoria(String categoriaId) {
         try {
-            return servicioRecurso.listarPorCategoria(categoriaId);
+            return nuevoServicioRecurso().listarPorCategoria(categoriaId);
         } catch (GlobalException | NoDataException e) {
             throw new RepositorioException(e.getMessage(), e);
         }
@@ -168,7 +189,7 @@ public class OracleRepositorio implements Repositorio {
     @Override
     public Recurso buscarRecursoPorId(String id) {
         try {
-            return servicioRecurso.buscar(id);
+            return nuevoServicioRecurso().buscar(id);
         } catch (GlobalException | NoDataException e) {
             throw new RepositorioException(e.getMessage(), e);
         }
@@ -176,17 +197,17 @@ public class OracleRepositorio implements Repositorio {
 
     @Override
     public void insertarRecurso(Recurso r) throws GlobalException, NoDataException {
-        servicioRecurso.insertar(r);
+        nuevoServicioRecurso().insertar(r);
     }
 
     @Override
     public void modificarRecurso(Recurso r) throws GlobalException, NoDataException {
-        servicioRecurso.modificar(r);
+        nuevoServicioRecurso().modificar(r);
     }
 
     @Override
     public void eliminarRecurso(String id) throws GlobalException, NoDataException {
-        servicioRecurso.eliminar(id);
+        nuevoServicioRecurso().eliminar(id);
     }
 
     // ===================== Reserva =====================
@@ -194,7 +215,7 @@ public class OracleRepositorio implements Repositorio {
     @Override
     public List<Reserva> listarReservas() {
         try {
-            return servicioReserva.listar();
+            return nuevoServicioReserva().listar();
         } catch (GlobalException | NoDataException e) {
             throw new RepositorioException(e.getMessage(), e);
         }
@@ -203,7 +224,7 @@ public class OracleRepositorio implements Repositorio {
     @Override
     public Reserva buscarReservaPorId(String id) {
         try {
-            return servicioReserva.buscar(id);
+            return nuevoServicioReserva().buscar(id);
         } catch (GlobalException | NoDataException e) {
             throw new RepositorioException(e.getMessage(), e);
         }
@@ -212,7 +233,7 @@ public class OracleRepositorio implements Repositorio {
     @Override
     public List<Reserva> listarReservasPorFuncionario(String funcionarioId) {
         try {
-            return servicioReserva.listarPorFuncionario(funcionarioId);
+            return nuevoServicioReserva().listarPorFuncionario(funcionarioId);
         } catch (GlobalException | NoDataException e) {
             throw new RepositorioException(e.getMessage(), e);
         }
@@ -221,7 +242,7 @@ public class OracleRepositorio implements Repositorio {
     @Override
     public List<String> listarIdsRecursosOcupados(String fecha, String horaInicio, String horaFin) {
         try {
-            return servicioReserva.listarIdsRecursosOcupados(fecha, horaInicio, horaFin);
+            return nuevoServicioReserva().listarIdsRecursosOcupados(fecha, horaInicio, horaFin);
         } catch (GlobalException | NoDataException e) {
             throw new RepositorioException(e.getMessage(), e);
         }
@@ -230,7 +251,7 @@ public class OracleRepositorio implements Repositorio {
     @Override
     public String siguienteIdReserva() {
         try {
-            return servicioReserva.siguienteId();
+            return nuevoServicioReserva().siguienteId();
         } catch (GlobalException | NoDataException e) {
             throw new RepositorioException(e.getMessage(), e);
         }
@@ -238,12 +259,12 @@ public class OracleRepositorio implements Repositorio {
 
     @Override
     public void crearReserva(Reserva reserva) throws GlobalException, NoDataException {
-        servicioReserva.crear(reserva);
+        nuevoServicioReserva().crear(reserva);
     }
 
     @Override
     public void cancelarReserva(String id) throws GlobalException, NoDataException {
-        servicioReserva.cancelar(id);
+        nuevoServicioReserva().cancelar(id);
     }
 
     // ===================== Estadisticas =====================
@@ -251,7 +272,7 @@ public class OracleRepositorio implements Repositorio {
     @Override
     public Map<String, Integer> estadisticasRecursos(String desde, String hasta) {
         try {
-            return servicioEstadisticas.estadisticasRecursos(desde, hasta);
+            return nuevoServicioEstadisticas().estadisticasRecursos(desde, hasta);
         } catch (GlobalException | NoDataException e) {
             throw new RepositorioException(e.getMessage(), e);
         }
@@ -260,7 +281,7 @@ public class OracleRepositorio implements Repositorio {
     @Override
     public Map<String, Integer> estadisticasActividades(String desde, String hasta) {
         try {
-            return servicioEstadisticas.estadisticasActividades(desde, hasta);
+            return nuevoServicioEstadisticas().estadisticasActividades(desde, hasta);
         } catch (GlobalException | NoDataException e) {
             throw new RepositorioException(e.getMessage(), e);
         }

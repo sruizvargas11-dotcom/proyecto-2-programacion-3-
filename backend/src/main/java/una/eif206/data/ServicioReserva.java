@@ -11,7 +11,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -39,6 +41,7 @@ public class ServicioReserva extends Servicio {
     private static final String LISTAR_RECURSOS_OCUPADOS = "{?=call listarRecursosOcupados(?,?,?)}";
     private static final String SIGUIENTE_ID = "{?=call siguienteIdReserva()}";
     private static final String BUSCAR_FUNCIONARIO = "{?=call buscarFuncionario(?)}";
+    private static final String LISTAR_RECURSOS_POR_CATEGORIA = "{?=call listarRecursoPorCategoria(?)}";
 
     /** Serializa crear(...) dentro del proceso: dos clientes no reservan el mismo recurso. */
     private static final Lock CREAR_RESERVA_LOCK = new ReentrantLock();
@@ -132,11 +135,13 @@ public class ServicioReserva extends Servicio {
     }
 
     /**
-     * Inserta la reserva y sus recursos en UNA sola conexion con
-     * autoCommit(false): si algun recurso ya no esta disponible o falla el
-     * insert, rollback completo. El candado de clase serializa esta llamada
-     * dentro del proceso para que la comprobacion de disponibilidad y el
-     * insert sean atomicos respecto a otra llamada concurrente a crear(...).
+     * Genera el id (si viene vacio), resuelve cada Recurso solicitado solo
+     * por categoria (id vacio + categoria presente) a un recurso libre real
+     * de esa categoria para esa fecha/franja, valida disponibilidad de los
+     * que ya traen id, e inserta la reserva y sus recursos: todo en UNA
+     * sola conexion con autoCommit(false) (si algo falla, rollback completo)
+     * y bajo CREAR_RESERVA_LOCK, para que dos clientes concurrentes pidiendo
+     * la misma categoria/horario nunca reciban el mismo recurso.
      */
     public void crear(Reserva reserva) throws GlobalException, NoDataException {
         CREAR_RESERVA_LOCK.lock();
@@ -144,7 +149,10 @@ public class ServicioReserva extends Servicio {
             conectar();
             try {
                 conexion.setAutoCommit(false);
-                verificarDisponibilidad(reserva);
+                if (reserva.getId() == null || reserva.getId().trim().isEmpty()) {
+                    reserva.setId(generarIdEnTransaccion());
+                }
+                List<Recurso> resueltos = resolverRecursos(reserva);
                 try (CallableStatement cs = conexion.prepareCall(INSERTAR)) {
                     cs.setString(1, reserva.getId());
                     cs.setString(2, reserva.getActividad());
@@ -155,12 +163,13 @@ public class ServicioReserva extends Servicio {
                     cs.execute();
                 }
                 try (CallableStatement cs = conexion.prepareCall(INSERTAR_RECURSO)) {
-                    for (Recurso recurso : reserva.getRecursos()) {
+                    for (Recurso recurso : resueltos) {
                         cs.setString(1, reserva.getId());
                         cs.setString(2, recurso.getId());
                         cs.execute();
                     }
                 }
+                reserva.setRecursos(resueltos);
                 conexion.commit();
             } catch (SQLException e) {
                 rollback();
@@ -177,13 +186,66 @@ public class ServicioReserva extends Servicio {
         }
     }
 
-    private void verificarDisponibilidad(Reserva reserva) throws SQLException, GlobalException {
+    private String generarIdEnTransaccion() throws SQLException {
+        try (CallableStatement cs = conexion.prepareCall(SIGUIENTE_ID)) {
+            cs.registerOutParameter(1, Types.VARCHAR);
+            cs.execute();
+            return cs.getString(1);
+        }
+    }
+
+    /**
+     * Para cada Recurso solicitado: si ya trae id, lo valida contra los
+     * ocupados (mismo mensaje de siempre); si no trae id, elige el primer
+     * recurso DISPONIBLE de esa categoria que no este ocupado ni ya elegido
+     * para otro item de la misma reserva. Si alguna categoria se queda sin
+     * recurso libre, no inserta nada: lanza con TODAS las categorias sin
+     * disponibilidad en un solo mensaje.
+     */
+    private List<Recurso> resolverRecursos(Reserva reserva) throws SQLException, GlobalException {
         List<String> ocupados = idsRecursosOcupados(reserva.getFecha(), reserva.getHoraInicio(), reserva.getHoraFin());
-        for (Recurso recurso : reserva.getRecursos()) {
-            if (ocupados.contains(recurso.getId())) {
-                throw new GlobalException("No hay disponibilidad para el recurso en ese horario");
+        Set<String> usados = new HashSet<>(ocupados);
+        List<Recurso> resueltos = new ArrayList<>();
+        List<String> categoriasSinDisponibilidad = new ArrayList<>();
+        for (Recurso solicitado : new ArrayList<>(reserva.getRecursos())) {
+            if (tieneId(solicitado)) {
+                if (usados.contains(solicitado.getId())) {
+                    throw new GlobalException("No hay disponibilidad para el recurso en ese horario");
+                }
+                resueltos.add(solicitado);
+                usados.add(solicitado.getId());
+                continue;
+            }
+            Recurso libre = buscarRecursoLibrePorCategoria(solicitado.getCategoria().getId(), usados);
+            if (libre == null) {
+                categoriasSinDisponibilidad.add(solicitado.getCategoria().getDescripcion());
+                continue;
+            }
+            resueltos.add(libre);
+            usados.add(libre.getId());
+        }
+        if (!categoriasSinDisponibilidad.isEmpty()) {
+            throw new GlobalException("No hay recursos disponibles para: " + String.join(", ", categoriasSinDisponibilidad));
+        }
+        return resueltos;
+    }
+
+    private static boolean tieneId(Recurso r) {
+        return r.getId() != null && !r.getId().trim().isEmpty();
+    }
+
+    private Recurso buscarRecursoLibrePorCategoria(String categoriaId, Set<String> usados) throws SQLException {
+        try (CallableStatement cs = conexion.prepareCall(LISTAR_RECURSOS_POR_CATEGORIA)) {
+            registrarCursorSalida(cs, 1);
+            cs.setString(2, categoriaId);
+            cs.execute();
+            for (Recurso candidato : ServicioRecurso.mapearLista(cs)) {
+                if (candidato.isDisponible() && !usados.contains(candidato.getId())) {
+                    return candidato;
+                }
             }
         }
+        return null;
     }
 
     private List<String> idsRecursosOcupados(String fecha, String horaInicio, String horaFin) throws SQLException {

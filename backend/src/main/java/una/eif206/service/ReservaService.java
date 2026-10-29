@@ -35,6 +35,19 @@ public class ReservaService {
         return repositorio.siguienteIdReserva();
     }
 
+    /**
+     * Crea la reserva resolviendo del lado del servidor lo que el cliente no
+     * trajo resuelto: si {@code e.getId()} viene vacio, el id lo genera el
+     * repositorio; si algun Recurso de {@code e.getRecursos()} viene con id
+     * vacio pero con categoria, se trata como "cualquier recurso libre de
+     * esa categoria para esa fecha/franja" (si uno esta ocupado, el
+     * repositorio elige otro libre). Esa resolucion (generar id + elegir
+     * recurso por categoria + validar disponibilidad + insertar) ocurre
+     * dentro de repositorio.crearReserva, en un solo candado/transaccion,
+     * para que dos solicitudes concurrentes por la misma categoria/horario
+     * nunca terminen con el mismo recurso. Al terminar con exito, {@code e}
+     * queda con el id generado y los recursos reales asignados.
+     */
     public String create(Reserva e) {
         if (e.getActividad() == null || e.getActividad().trim().isEmpty()) {
             return "La actividad es obligatoria";
@@ -45,7 +58,14 @@ public class ReservaService {
         if (!horarioValido(e.getHoraInicio(), e.getHoraFin())) {
             return "La hora de inicio debe ser anterior a la hora de fin";
         }
-        if (repositorio.buscarReservaPorId(e.getId()) != null) {
+        for (Recurso r : e.getRecursos()) {
+            boolean tieneId = r.getId() != null && !r.getId().trim().isEmpty();
+            if (!tieneId && r.getCategoria() == null) {
+                return "Cada recurso debe traer su id o, si no, una categoria para elegir uno disponible";
+            }
+        }
+        boolean idExplicito = e.getId() != null && !e.getId().trim().isEmpty();
+        if (idExplicito && repositorio.buscarReservaPorId(e.getId()) != null) {
             return "Reserva ya existe";
         }
         try {
