@@ -258,15 +258,78 @@ public class FakeService implements IService {
         if (!horarioValido(e.getHoraInicio(), e.getHoraFin())) {
             return "La hora de inicio debe ser anterior a la hora de fin";
         }
-        if (reservas.stream().anyMatch(i -> i.getId().equals(e.getId()))) return "Reserva ya existe";
-        boolean ocupado = reservas.stream()
-                .filter(r -> r.getEstado() != EstadoReserva.CANCELADA)
-                .filter(r -> r.getFecha().equals(e.getFecha()))
-                .filter(r -> r.getRecursos() != null &&
-                        r.getRecursos().stream().anyMatch(rec -> e.getRecursos().contains(rec)))
-                .anyMatch(r -> horariosSolapan(r.getHoraInicio(), r.getHoraFin(), e.getHoraInicio(), e.getHoraFin()));
-        if (ocupado) return "No hay disponibilidad para el recurso en ese horario";
+        for (Recurso r : e.getRecursos()) {
+            if (!tieneId(r) && r.getCategoria() == null) {
+                return "Cada recurso debe traer su id o, si no, una categoria para elegir uno disponible";
+            }
+        }
+        if (tieneId(e.getId()) && reservas.stream().anyMatch(i -> i.getId().equals(e.getId()))) {
+            return "Reserva ya existe";
+        }
+
+        // Igual que el Backend real: un Recurso con id vacio y con categoria
+        // significa "cualquier recurso libre de esa categoria".
+        List<Recurso> resueltos = new ArrayList<>();
+        List<String> categoriasSinDisponibilidad = new ArrayList<>();
+        for (Recurso solicitado : e.getRecursos()) {
+            if (tieneId(solicitado)) {
+                if (recursoOcupado(solicitado.getId(), e.getFecha(), e.getHoraInicio(), e.getHoraFin())
+                        || contieneRecurso(resueltos, solicitado.getId())) {
+                    return "No hay disponibilidad para el recurso en ese horario";
+                }
+                resueltos.add(solicitado);
+                continue;
+            }
+            Recurso libre = buscarLibre(solicitado.getCategoria(), e.getFecha(),
+                    e.getHoraInicio(), e.getHoraFin(), resueltos);
+            if (libre == null) {
+                categoriasSinDisponibilidad.add(solicitado.getCategoria().getDescripcion());
+            } else {
+                resueltos.add(libre);
+            }
+        }
+        if (!categoriasSinDisponibilidad.isEmpty()) {
+            return "No hay recursos disponibles para: " + String.join(", ", categoriasSinDisponibilidad);
+        }
+
+        if (!tieneId(e.getId())) {
+            e.setId(generarIdReservaInterno());
+        }
+        e.setRecursos(resueltos);
         reservas.add(e);
+        return null;
+    }
+
+    private static boolean tieneId(Recurso r) {
+        return tieneId(r.getId());
+    }
+
+    private static boolean tieneId(String id) {
+        return id != null && !id.trim().isEmpty();
+    }
+
+    private static boolean contieneRecurso(List<Recurso> lista, String idRecurso) {
+        return lista.stream().anyMatch(r -> idRecurso.equals(r.getId()));
+    }
+
+    private boolean recursoOcupado(String idRecurso, String fecha, String horaInicio, String horaFin) {
+        return reservas.stream()
+                .filter(r -> r.getEstado() != EstadoReserva.CANCELADA)
+                .filter(r -> r.getFecha().equals(fecha))
+                .filter(r -> r.getRecursos() != null && contieneRecurso(r.getRecursos(), idRecurso))
+                .anyMatch(r -> horariosSolapan(r.getHoraInicio(), r.getHoraFin(), horaInicio, horaFin));
+    }
+
+    private Recurso buscarLibre(CategoriaRecurso categoria, String fecha, String horaInicio,
+                                String horaFin, List<Recurso> yaElegidos) {
+        for (Recurso candidato : recursos) {
+            if (candidato.getCategoria() == null
+                    || !candidato.getCategoria().getId().equals(categoria.getId())) continue;
+            if (!candidato.isDisponible()) continue;
+            if (contieneRecurso(yaElegidos, candidato.getId())) continue;
+            if (recursoOcupado(candidato.getId(), fecha, horaInicio, horaFin)) continue;
+            return candidato;
+        }
         return null;
     }
 
@@ -287,7 +350,7 @@ public class FakeService implements IService {
 
     @Override
     public String asignarRecursosDisponibles(List<CategoriaRecurso> categoriasSolicitadas, String fecha,
-                                              String horaInicio, String horaFin, List<Recurso> recursosAsignados) {
+                                             String horaInicio, String horaFin, List<Recurso> recursosAsignados) {
         List<String> categoriasSinDisponibilidad = new ArrayList<>();
         for (CategoriaRecurso categoria : categoriasSolicitadas) {
             Recurso disponible = buscarRecursoDisponible(categoria, fecha, horaInicio, horaFin);

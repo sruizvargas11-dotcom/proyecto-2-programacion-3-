@@ -2,6 +2,7 @@ package una.eif206;
 
 import una.eif206.client.FakeService;
 import una.eif206.controller.ActividadesController;
+import una.eif206.controller.AlertaController;
 import una.eif206.controller.CalendarizacionController;
 import una.eif206.controller.CambiarClaveController;
 import una.eif206.controller.CategoriasController;
@@ -13,6 +14,7 @@ import una.eif206.controller.ReservasController;
 import una.eif206.protocol.IService;
 import una.eif206.util.Sesion;
 import una.eif206.view.ActividadesView;
+import una.eif206.view.AlertaPanel;
 import una.eif206.view.CalendarizacionView;
 import una.eif206.view.CambiarClaveView;
 import una.eif206.view.CategoriasView;
@@ -29,6 +31,7 @@ public class ApplicationLogin extends JFrame {
 
     public static final Color BACKGROUND_ERROR = new Color(255, 102, 102);
     private JTabbedPane tabs;
+    private AlertaController alertaController;
 
     private final IService service;
 
@@ -111,12 +114,22 @@ public class ApplicationLogin extends JFrame {
             }
         });
 
+        //  Panel de alertas (derecha, visible en todos los tabs)
+        AlertaPanel alertaPanel = new AlertaPanel();
+        alertaController = new AlertaController(alertaPanel);
+
+        // TEMPORAL: boton para probar alertas sin Backend. Borrar en la Fase C.
+        JButton simularAlertaBtn = new JButton("Simular alerta");
+        simularAlertaBtn.addActionListener(e -> alertaController.simularAlerta());
+        botonesPanel.add(simularAlertaBtn);
+
         botonesPanel.add(cambiarClaveBtn);
         botonesPanel.add(cerrarSesionBtn);
         topPanel.add(botonesPanel, BorderLayout.EAST);
 
         add(topPanel, BorderLayout.NORTH);
         add(tabs, BorderLayout.CENTER);
+        add(alertaPanel.getPanel(), BorderLayout.EAST);
     }
 
     private void abrirCambiarClave() {
@@ -127,6 +140,7 @@ public class ApplicationLogin extends JFrame {
     }
 
     private void cerrarSesion() {
+        alertaController.limpiar();
         Sesion.logout();
         dispose();
 
