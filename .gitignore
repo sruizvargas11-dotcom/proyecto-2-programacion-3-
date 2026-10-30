@@ -41,3 +41,9 @@ src/main/resources/config.properties
 backend/config.properties
 *.class
 .idea/
+
+/*.txt
+
+.idea/
+
+.claude/
