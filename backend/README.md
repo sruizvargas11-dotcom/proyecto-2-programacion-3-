@@ -146,6 +146,22 @@ export DB_PASSWORD="..."
 mvn -pl backend -am compile exec:java -Dexec.mainClass=una.eif206.ServerMain
 ```
 
+## Extraer AI (Groq)
+
+`ReservaIAService` lee la API key de Groq desde el classpath, no desde variables
+de entorno. Para habilitarla:
+
+1. Copie `backend/src/main/resources/config.properties.example` a
+   `backend/src/main/resources/config.properties`.
+2. Reemplace `PON_AQUI_TU_KEY` por su API key de [console.groq.com](https://console.groq.com/).
+3. Reinicie `ServerMain`.
+
+`backend/src/main/resources/config.properties` está en `.gitignore` y **nunca
+se sube al repositorio**. `config.properties.example` sí se versiona y sirve
+de plantilla para que cualquier integrante sepa qué clave necesita configurar.
+
+Sin la key el backend arranca igual; Extraer AI puede no funcionar.
+
 ## Correr las pruebas
 
 Desde la raíz del repositorio (compila `protocol` primero, del que depende `backend`):
@@ -230,6 +246,7 @@ backend/
     │   │   ├── net/       [una.eif206.net]       Server/Worker (sockets SYNC/ASYNC, alertas)
     │   │   └── util/      [una.eif206.util]      interfaz consumida por la extracción con IA
     │   └── resources/
+    │       ├── config.properties.example          (copiar a config.properties y rellenar groq.api.key)
     │       └── db/                                4 scripts .sql (ver "Crear la base de datos")
     └── test/java/una/eif206/        pruebas unitarias y de integración (Mockito + sockets reales)
 ```
