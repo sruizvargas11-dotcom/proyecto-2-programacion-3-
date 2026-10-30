@@ -1,6 +1,8 @@
 package una.eif206;
 
 import una.eif206.client.FakeService;
+import una.eif206.client.Service;
+import una.eif206.util.ConfigCliente;
 import una.eif206.controller.ActividadesController;
 import una.eif206.controller.AlertaController;
 import una.eif206.controller.CalendarizacionController;
@@ -154,12 +156,30 @@ public class ApplicationLogin extends JFrame {
     }
 
     public static void main(String[] args) {
-        IService service = new FakeService();
+        try {
+            UIManager.setLookAndFeel("javax.swing.plaf.nimbus.NimbusLookAndFeel");
+        } catch (Exception e) {}
+
+        // Patron Proxy: FakeService (datos de prueba) o Service (Backend real).
+        // Los controllers reciben un IService y no saben cual de los dos es.
+        IService service;
+        if (ConfigCliente.usarServidor()) {
+            try {
+                Service proxy = new Service(ConfigCliente.getHost(), ConfigCliente.getPuerto());
+                Runtime.getRuntime().addShutdownHook(new Thread(proxy::cerrar));
+                service = proxy;
+            } catch (Exception e) {
+                JOptionPane.showMessageDialog(null,
+                        e.getMessage() + "\nVerifique que el Backend este encendido.",
+                        "Error de conexion", JOptionPane.ERROR_MESSAGE);
+                System.exit(1);
+                return;
+            }
+        } else {
+            service = new FakeService();
+        }
 
         SwingUtilities.invokeLater(() -> {
-            try {
-                UIManager.setLookAndFeel("javax.swing.plaf.nimbus.NimbusLookAndFeel");
-            } catch (Exception e) {}
 
             Runnable onLoginExitoso = () -> new ApplicationLogin(service).setVisible(true);
 
