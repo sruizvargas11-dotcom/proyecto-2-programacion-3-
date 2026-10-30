@@ -42,6 +42,12 @@ public class LoginView extends JDialog {
 
     public void setController(LoginController c) { this.controller = c; }
 
+    public void setCargando(boolean cargando) {
+        ingresarFld.setEnabled(!cargando);
+        cambiarFld.setEnabled(!cargando);
+        setCursor(cargando ? Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR) : Cursor.getDefaultCursor());
+    }
+
     public void mostrarError(String mensaje) {
         idFld.setBackground(ApplicationLogin.BACKGROUND_ERROR);
         claveFld.setBackground(ApplicationLogin.BACKGROUND_ERROR);

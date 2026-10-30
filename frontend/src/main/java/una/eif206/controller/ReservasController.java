@@ -12,6 +12,7 @@ import una.eif206.protocol.IService;
 import una.eif206.util.Sesion;
 import una.eif206.view.ReservasView;
 
+import javax.swing.SwingWorker;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -104,28 +105,47 @@ public class ReservasController {
     }
 
     private void procesarIA() {
-        try {
-            String frase = vista.getFrase();
-            if (frase == null || frase.isEmpty()) {
-                vista.mostrarError("Escriba una frase para extraer.");
-                return;
+        String frase = vista.getFrase();
+        if (frase == null || frase.trim().isEmpty()) {
+            vista.mostrarError("Escriba una frase para extraer.");
+            return;
+        }
+        vista.setCargandoIA(true);
+        new SwingWorker<ReservaExtraccion, Void>() {
+            @Override
+            protected ReservaExtraccion doInBackground() throws Exception {
+                return service.extraerReserva(frase);
             }
-            ReservaExtraccion r = service.extraerReserva(frase);
-            if (r.getActividad() != null) vista.setActividad(r.getActividad());
-            if (r.getFecha() != null) {
+
+            @Override
+            protected void done() {
+                vista.setCargandoIA(false);
                 try {
-                    vista.setFecha(LocalDate.parse(r.getFecha()));
-                } catch (Exception ignored) {
-                    // Si la IA devuelve un formato inesperado, se deja el campo tal cual
+                    llenarDesdeIA(get());
+                } catch (Exception e) {
+                    // El detalle tecnico va a la consola; al usuario, un mensaje claro.
+                    System.err.println("[IA] " + (e.getCause() != null ? e.getCause() : e));
+                    vista.mostrarError("No se pudo procesar la frase con IA.\n"
+                            + "Intente de nuevo o llene los campos manualmente.");
                 }
             }
-            if (r.getHoraInicio() != null) vista.setHoraInicio(r.getHoraInicio());
-            if (r.getHoraFinal() != null) vista.setHoraFin(r.getHoraFinal());
-            if (r.getCategoriasRecurso() != null && !r.getCategoriasRecurso().isEmpty())
-                vista.seleccionarCategoriasPorNombre(r.getCategoriasRecurso());
-        } catch (Exception e) {
-            vista.mostrarError("Error al procesar IA: " + e.getMessage());
+        }.execute();
+    }
+
+    private void llenarDesdeIA(ReservaExtraccion r) {
+        if (r == null) return;
+        if (r.getActividad() != null) vista.setActividad(r.getActividad());
+        if (r.getFecha() != null) {
+            try {
+                vista.setFecha(LocalDate.parse(r.getFecha()));
+            } catch (Exception ignored) {
+                // Si la IA devuelve un formato inesperado, se deja el campo tal cual
+            }
         }
+        if (r.getHoraInicio() != null) vista.setHoraInicio(r.getHoraInicio());
+        if (r.getHoraFinal() != null) vista.setHoraFin(r.getHoraFinal());
+        if (r.getCategoriasRecurso() != null && !r.getCategoriasRecurso().isEmpty())
+            vista.seleccionarCategoriasPorNombre(r.getCategoriasRecurso());
     }
 
     public void extraerConIA() {

@@ -107,6 +107,11 @@ public class EstadisticasView {
     public JPanel getPanel() { return panel; }
     public void setController(EstadisticasController c) { this.controller = c; }
 
+    public void setCargando(boolean cargando) {
+        generarFld.setEnabled(!cargando);
+        panel.setCursor(cargando ? Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR) : Cursor.getDefaultCursor());
+    }
+
     private boolean validate() {
         boolean valid = true;
         if (desdeFld.getDate() == null) {
