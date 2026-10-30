@@ -47,3 +47,5 @@ backend/config.properties
 .idea/
 
 .claude/
+
+backend/src/main/resources/config.properties
