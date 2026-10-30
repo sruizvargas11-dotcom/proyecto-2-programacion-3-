@@ -2,6 +2,7 @@ package una.eif206;
 
 import una.eif206.client.FakeService;
 import una.eif206.client.Service;
+import una.eif206.client.SocketListener;
 import una.eif206.util.ConfigCliente;
 import una.eif206.controller.ActividadesController;
 import una.eif206.controller.AlertaController;
@@ -36,13 +37,16 @@ public class ApplicationLogin extends JFrame {
     private AlertaController alertaController;
 
     private final IService service;
+    /** Canal de alertas (socket ASYNC). Es null en modo prueba (FakeService). */
+    private final SocketListener listener;
 
-    public ApplicationLogin(IService service) {
+    public ApplicationLogin(IService service, SocketListener listener) {
         if (Sesion.getUsuario() == null) {
             throw new IllegalStateException("No hay usuario en sesion");
         }
 
         this.service = service;
+        this.listener = listener;
 
         setTitle("Sistema de Reserva de Recursos - " +
                 Sesion.getUsuario().getId() + " (" +
@@ -119,11 +123,10 @@ public class ApplicationLogin extends JFrame {
         //  Panel de alertas (derecha, visible en todos los tabs)
         AlertaPanel alertaPanel = new AlertaPanel();
         alertaController = new AlertaController(alertaPanel);
-
-        // TEMPORAL: boton para probar alertas sin Backend. Borrar en la Fase C.
-        JButton simularAlertaBtn = new JButton("Simular alerta");
-        simularAlertaBtn.addActionListener(e -> alertaController.simularAlerta());
-        botonesPanel.add(simularAlertaBtn);
+        // Desde ahora, las reservas que creen otros usuarios llegan a este panel.
+        if (listener != null) {
+            listener.setDestino(alertaController);
+        }
 
         botonesPanel.add(cambiarClaveBtn);
         botonesPanel.add(cerrarSesionBtn);
@@ -142,12 +145,16 @@ public class ApplicationLogin extends JFrame {
     }
 
     private void cerrarSesion() {
+        // Se dejan de recibir alertas y se vacia la lista.
+        if (listener != null) {
+            listener.setDestino(null);
+        }
         alertaController.limpiar();
         Sesion.logout();
         dispose();
 
         SwingUtilities.invokeLater(() -> {
-            Runnable onLoginExitoso = () -> new ApplicationLogin(service).setVisible(true);
+            Runnable onLoginExitoso = () -> new ApplicationLogin(service, listener).setVisible(true);
             LoginView loginView = new LoginView();
             LoginController loginController = new LoginController(loginView, service, onLoginExitoso);
             loginView.setController(loginController);
@@ -163,11 +170,12 @@ public class ApplicationLogin extends JFrame {
         // Patron Proxy: FakeService (datos de prueba) o Service (Backend real).
         // Los controllers reciben un IService y no saben cual de los dos es.
         IService service;
+        SocketListener listener = null;
         if (ConfigCliente.usarServidor()) {
+            Service proxy;
             try {
-                Service proxy = new Service(ConfigCliente.getHost(), ConfigCliente.getPuerto());
-                Runtime.getRuntime().addShutdownHook(new Thread(proxy::cerrar));
-                service = proxy;
+                // Socket SYNC: pedidos y respuestas.
+                proxy = new Service(ConfigCliente.getHost(), ConfigCliente.getPuerto());
             } catch (Exception e) {
                 JOptionPane.showMessageDialog(null,
                         e.getMessage() + "\nVerifique que el Backend este encendido.",
@@ -175,13 +183,31 @@ public class ApplicationLogin extends JFrame {
                 System.exit(1);
                 return;
             }
+            try {
+                // Socket ASYNC: alertas. Usa el sid que el Backend le dio al socket SYNC.
+                listener = new SocketListener(proxy.getHost(), proxy.getPuerto(), proxy.getSid());
+                listener.start();
+            } catch (Exception e) {
+                listener = null;
+                JOptionPane.showMessageDialog(null,
+                        "No se pudo abrir el canal de alertas. La aplicacion funciona, pero sin alertas.",
+                        "Aviso", JOptionPane.WARNING_MESSAGE);
+            }
+            // Al cerrar el programa: detener el listener y avisar LOGOUT al Backend.
+            final SocketListener listenerFinal = listener;
+            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                if (listenerFinal != null) listenerFinal.stop();
+                proxy.cerrar();
+            }));
+            service = proxy;
         } else {
             service = new FakeService();
         }
+        final SocketListener listenerApp = listener;
 
         SwingUtilities.invokeLater(() -> {
 
-            Runnable onLoginExitoso = () -> new ApplicationLogin(service).setVisible(true);
+            Runnable onLoginExitoso = () -> new ApplicationLogin(service, listenerApp).setVisible(true);
 
             LoginView loginView = new LoginView();
             LoginController loginController = new LoginController(loginView, service, onLoginExitoso);
