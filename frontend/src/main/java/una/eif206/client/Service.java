@@ -9,6 +9,7 @@ import una.eif206.model.Usuario;
 import una.eif206.protocol.IService;
 import una.eif206.protocol.Protocol;
 
+import javax.swing.SwingUtilities;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -20,7 +21,7 @@ import java.util.Map;
 public class Service implements IService {
 
     private static final int TIMEOUT_CONEXION_MS = 5000;
-    private static final int TIMEOUT_RESPUESTA_MS = 20000;
+    private static final int TIMEOUT_RESPUESTA_MS = 60000;
 
     private final String host;
     private final int puerto;
@@ -29,6 +30,8 @@ public class Service implements IService {
     private final ObjectInputStream entrada;
     private final String sid;
     private boolean conectado;
+    /** Se ejecuta (en el hilo de Swing) si se cae la conexion con el Backend. */
+    private Runnable alPerderConexion;
 
     public Service(String host, int puerto) throws IOException {
         this.host = host;
@@ -75,6 +78,7 @@ public class Service implements IService {
         } catch (IOException | ClassNotFoundException e) {
             conectado = false;
             cerrarSocket();
+            if (alPerderConexion != null) SwingUtilities.invokeLater(alPerderConexion);
             throw new IllegalStateException("Se perdio la conexion con el servidor " + host + ":" + puerto);
         }
 
@@ -104,6 +108,8 @@ public class Service implements IService {
     }
 
     public boolean isConectado() { return conectado; }
+
+    public void setAlPerderConexion(Runnable accion) { this.alPerderConexion = accion; }
 
     private void cerrarSocket() {
         try {

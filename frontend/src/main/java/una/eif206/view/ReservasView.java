@@ -243,6 +243,11 @@ public class ReservasView {
     }
 
     public String getFrase() { return fraseFld.getText(); }
+
+    public void setCargandoIA(boolean cargando) {
+        extraerIAFld.setEnabled(!cargando);
+        panel.setCursor(cargando ? Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR) : Cursor.getDefaultCursor());
+    }
     public void setActividad(String v) { actividadFld.setText(v); }
     public void setFecha(LocalDate fecha) {
         fechaFld.setDate(Date.from(fecha.atStartOfDay(ZoneId.systemDefault()).toInstant()));

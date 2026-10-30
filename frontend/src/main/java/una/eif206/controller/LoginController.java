@@ -6,6 +6,9 @@ import una.eif206.util.Sesion;
 import una.eif206.view.CambiarClaveView;
 import una.eif206.view.LoginView;
 
+import javax.swing.SwingWorker;
+import java.util.concurrent.ExecutionException;
+
 public class LoginController {
 
     private final LoginView vista;
@@ -19,19 +22,37 @@ public class LoginController {
         vista.setController(this);
     }
 
+    /**
+     * El pedido al servidor corre en otro hilo (SwingWorker) para que la ventana
+     * no se congele mientras espera; done() vuelve al hilo de Swing.
+     */
     public void login(String id, String clave) {
-        try {
-            Usuario u = service.login(id, clave);
-            if (u == null) {
-                vista.mostrarError("Usuario o clave incorrectos");
-                return;
+        vista.setCargando(true);
+        new SwingWorker<Usuario, Void>() {
+            @Override
+            protected Usuario doInBackground() {
+                return service.login(id, clave);
             }
-            Sesion.setUsuario(u);
-            vista.dispose();
-            onLoginExitoso.run();
-        } catch (Exception ex) {
-            vista.mostrarError("Error: " + ex.getMessage());
-        }
+
+            @Override
+            protected void done() {
+                vista.setCargando(false);
+                try {
+                    Usuario u = get();
+                    if (u == null) {
+                        vista.mostrarError("Usuario o clave incorrectos");
+                        return;
+                    }
+                    Sesion.setUsuario(u);
+                    vista.dispose();
+                    onLoginExitoso.run();
+                } catch (ExecutionException ex) {
+                    vista.mostrarError("Error: " + ex.getCause().getMessage());
+                } catch (InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        }.execute();
     }
 
     public void abrirCambiarClave(String id, String clave) {

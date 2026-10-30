@@ -14,6 +14,8 @@ import una.eif206.controller.FuncionariosController;
 import una.eif206.controller.LoginController;
 import una.eif206.controller.RecursosController;
 import una.eif206.controller.ReservasController;
+import una.eif206.model.Usuario;
+import una.eif206.model.enums.UsuarioRol;
 import una.eif206.protocol.IService;
 import una.eif206.util.Sesion;
 import una.eif206.view.ActividadesView;
@@ -48,9 +50,9 @@ public class ApplicationLogin extends JFrame {
         this.service = service;
         this.listener = listener;
 
-        setTitle("Sistema de Reserva de Recursos - " +
-                Sesion.getUsuario().getId() + " (" +
-                Sesion.getUsuario().getRol() + ")");
+        // Como en el enunciado: "SISTEMA DE RESERVAS - 222 (FUNCIONARIO)"
+        Usuario usuario = Sesion.getUsuario();
+        setTitle("SISTEMA DE RESERVAS - " + usuario.getId() + " (" + usuario.getRol() + ")");
         setSize(1050, 680);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
@@ -120,10 +122,9 @@ public class ApplicationLogin extends JFrame {
             }
         });
 
-        //  Panel de alertas (derecha, visible en todos los tabs)
+        //  Panel de alertas
         AlertaPanel alertaPanel = new AlertaPanel();
         alertaController = new AlertaController(alertaPanel);
-        // Desde ahora, las reservas que creen otros usuarios llegan a este panel.
         if (listener != null) {
             listener.setDestino(alertaController);
         }
@@ -131,6 +132,12 @@ public class ApplicationLogin extends JFrame {
         botonesPanel.add(cambiarClaveBtn);
         botonesPanel.add(cerrarSesionBtn);
         topPanel.add(botonesPanel, BorderLayout.EAST);
+
+        String rolTexto = usuario.getRol() == UsuarioRol.ADMIN ? "Administrador" : "Funcionario";
+        JLabel opcionesLbl = new JLabel("Opciones: " + rolTexto + " - " + usuario.getNombre());
+        opcionesLbl.setFont(opcionesLbl.getFont().deriveFont(Font.BOLD));
+        opcionesLbl.setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 0));
+        topPanel.add(opcionesLbl, BorderLayout.WEST);
 
         add(topPanel, BorderLayout.NORTH);
         add(tabs, BorderLayout.CENTER);
@@ -145,7 +152,6 @@ public class ApplicationLogin extends JFrame {
     }
 
     private void cerrarSesion() {
-        // Se dejan de recibir alertas y se vacia la lista.
         if (listener != null) {
             listener.setDestino(null);
         }
@@ -162,13 +168,23 @@ public class ApplicationLogin extends JFrame {
         });
     }
 
+    private static boolean conexionPerdidaAvisada = false;
+
+    private static void avisarConexionPerdida() {
+        if (conexionPerdidaAvisada) return;
+        conexionPerdidaAvisada = true;
+        JOptionPane.showMessageDialog(null,
+                "Se perdio la conexion con el servidor.\nLa aplicacion se va a cerrar.",
+                "Conexion perdida", JOptionPane.ERROR_MESSAGE);
+        System.exit(1);
+    }
+
     public static void main(String[] args) {
         try {
             UIManager.setLookAndFeel("javax.swing.plaf.nimbus.NimbusLookAndFeel");
         } catch (Exception e) {}
 
         // Patron Proxy: FakeService (datos de prueba) o Service (Backend real).
-        // Los controllers reciben un IService y no saben cual de los dos es.
         IService service;
         SocketListener listener = null;
         if (ConfigCliente.usarServidor()) {
@@ -184,7 +200,7 @@ public class ApplicationLogin extends JFrame {
                 return;
             }
             try {
-                // Socket ASYNC: alertas. Usa el sid que el Backend le dio al socket SYNC.
+                // Socket ASYNC: Usa el sid que el Backend le dio al socket SYNC.
                 listener = new SocketListener(proxy.getHost(), proxy.getPuerto(), proxy.getSid());
                 listener.start();
             } catch (Exception e) {
@@ -193,6 +209,10 @@ public class ApplicationLogin extends JFrame {
                         "No se pudo abrir el canal de alertas. La aplicacion funciona, pero sin alertas.",
                         "Aviso", JOptionPane.WARNING_MESSAGE);
             }
+            // Si se cae el Backend (lo detecta cualquiera de los dos sockets): avisar y cerrar.
+            proxy.setAlPerderConexion(ApplicationLogin::avisarConexionPerdida);
+            if (listener != null) listener.setAlPerderConexion(ApplicationLogin::avisarConexionPerdida);
+
             // Al cerrar el programa: detener el listener y avisar LOGOUT al Backend.
             final SocketListener listenerFinal = listener;
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {

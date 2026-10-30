@@ -21,6 +21,8 @@ public class SocketListener {
     private volatile boolean activo;
 
     private ThreadListener destino;
+    /** Se ejecuta (en el hilo de Swing) si el socket se cae sin que nadie llamara a stop(). */
+    private Runnable alPerderConexion;
 
     public SocketListener(String host, int puerto, String sid) {
         this.host = host;
@@ -47,7 +49,6 @@ public class SocketListener {
         hilo.start();
     }
 
-    /** Ciclo del hilo: espera alertas hasta que se detenga o se caiga la conexion. */
     private void listen() {
         try {
             while (activo) {
@@ -58,8 +59,9 @@ public class SocketListener {
                 }
             }
         } catch (IOException | ClassNotFoundException e) {
-            // Socket cerrado (stop() o Backend apagado): el hilo termina.
-            // Si se cayo el Backend, el Service (SYNC) lo avisa en la siguiente operacion.
+            if (activo && alPerderConexion != null) {
+                SwingUtilities.invokeLater(alPerderConexion);
+            }
         } finally {
             activo = false;
         }
@@ -86,4 +88,6 @@ public class SocketListener {
     }
 
     public boolean isActivo() { return activo; }
+
+    public void setAlPerderConexion(Runnable accion) { this.alPerderConexion = accion; }
 }
