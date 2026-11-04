@@ -236,7 +236,7 @@ funcionaron sin errores de compatibilidad de driver.
 backend/
 ├── pom.xml
 ├── config.properties.example     (plantilla: copiar a config.properties, nunca commitear el real)
-├── docs/                         (BD-ESPECIFICACION.md, REPORTE-BACKEND.md, BACKEND-P2.md)
+├── docs/                         (BD-ESPECIFICACION.md, REPORTE-BACKEND.md)
 └── src/
     ├── main/
     │   ├── java/una/eif206/

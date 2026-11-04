@@ -7,9 +7,9 @@ import java.sql.SQLException;
 import java.sql.Types;
 
 /**
- * Clase base de los ServicioX (patron de la seccion 4 de docs/BACKEND-P2.md,
- * ya corregido: parametros reales -no literales-, try-with-resources,
- * execute() para procedimientos, nunca printStackTrace hacia el cliente).
+ * Clase base de los ServicioX. Parametros reales (no literales),
+ * try-with-resources, execute() para procedimientos, nunca
+ * printStackTrace hacia el cliente.
  */
 public abstract class Servicio {
 
