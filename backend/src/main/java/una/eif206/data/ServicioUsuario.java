@@ -10,8 +10,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 
 /**
- * Login y cambio de clave contra la tabla USUARIO (patron de la seccion 4 de
- * docs/BACKEND-P2.md). Nombres de procedimientos exactos a
+ * Login y cambio de clave contra la tabla USUARIO. Nombres de procedimientos exactos a
  * script_reservas_oracle11g.sql: loginUsuario, cambiarClave.
  */
 public class ServicioUsuario extends Servicio {

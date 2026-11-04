@@ -262,4 +262,3 @@ proyecto-2-programacion-3-/
 
 - [`backend/README.md`](backend/README.md): detalle del Backend, variables de entorno, pruebas y decisiones de diseño.
 - [`backend/docs/BD-ESPECIFICACION.md`](backend/docs/BD-ESPECIFICACION.md): tablas, secuencias y procedimientos de la base de datos.
-- [`docs/BACKEND-P2.md`](docs/BACKEND-P2.md): diseño de red y patrón de acceso a datos.

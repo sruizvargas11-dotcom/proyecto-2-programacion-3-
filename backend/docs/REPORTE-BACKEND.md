@@ -185,7 +185,7 @@ Búsqueda en todo el repositorio (no solo `backend/`) de `Server`, `Worker`, soc
 - **No existe** ningún uso de `ServerSocket` ni de un socket ASYNC real en el código.
 - La única aparición de estos términos es:
   - `protocol/src/main/java/una/eif206/protocol/Protocol.java`: la constante `public static final int ASYNC = 2;` — es solo una constante de protocolo (un número), sin ninguna lógica de red asociada.
-  - `docs/BACKEND-P2.md`: menciona `Server`, `Worker`, `AlertaReserva`/`deliver_message` y los sockets SYNC/ASYNC como **plan de la Etapa 3**, todavía no iniciada.
+  - El diseño de red (sockets SYNC/ASYNC, `Server`, `Worker`, `AlertaReserva`) estaba documentado externamente pero aún no implementado en el código.
 
 **Confirmado**: tal como se esperaba, Server/Worker/socket ASYNC/`AlertaReserva` **no están implementados todavía**. Es trabajo 100% pendiente de Etapa 3.
 
@@ -233,7 +233,7 @@ No se intentó ningún valor por defecto ni se asumió ningún dato de la base r
 
 1. **(Alta) Verificación contra Oracle real pendiente.** Sin `DB_URL`/`DB_USER`/`DB_PASSWORD` en este entorno no se pudo confirmar que los 30 procedimientos/funciones estén `VALID` en `user_objects`, ni contar filas/objetos (secciones 2 y 9). Bloquea el cierre formal de la Etapa 2.
 2. **(Alta) Etapa 3 no iniciada.** `Server`, `Worker`, sockets SYNC/ASYNC, `AlertaReserva`/`deliver_message` — 0% hecho (sección 7). Es la pieza más grande pendiente del backend.
-3. **(Media) Etapa 4** — no se encontró un plan explícito de alcance más allá de lo que menciona `docs/BACKEND-P2.md`; su contenido exacto queda **no verificado** en esta auditoría.
+3. **(Media) Etapa 4** — no se encontró un plan explícito de alcance en el repositorio; los detalles de implementación de esta etapa quedan **no verificados** en esta auditoría.
 4. **(Media) Limpieza de XML pendiente.** `Data.java`, `XMLHelper.java`, `data.xml`, `PersistenciaXMLTest.java` y las 2 dependencias JAXB del `pom.xml` siguen en el repo aunque el camino de producción ya no las usa (sección 5).
 5. **(Media) `README-conexion.md` está vacío** (3 bytes, sin contenido útil) — no documenta cómo levantar el backend ni conectar a Oracle.
 6. **(Baja) Huecos de prueba puntuales:** no existe `CalendarioServiceTest` (la lógica de calendarización solo se prueba indirectamente) ni ninguna prueba para `ReservaIAService` (depende de una API externa).
